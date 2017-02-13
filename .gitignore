@@ -1,3 +1,6 @@
 *.zip
 *.t7
 *.net
+*.swp
+*.pyc
+
