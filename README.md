@@ -1,3 +1,5 @@
+#Description
+
 These are only experiments and messing around before I started work on [ATRA, my Affine Transformation Autoencoder project.](https://github.com/DarkElement75/atra)
 
 I messed around with torch a bit because [these guys looked pretty professional and were from MIT](https://github.com/mrkulk/Unsupervised-Capsule-Network), and they were also the only implementation I could find so far of transforming autoencoders. However, I realized that while torch definitely has its advantages, it does not have enough to be superior to Keras/Tensorflow for my uses. Because of this, and because I don't want to learn how to program in Lua or an entirely new library, I went back to Keras. torch_tests/ has the torch tests, and affine_tests/ has mostly Keras stuff.
