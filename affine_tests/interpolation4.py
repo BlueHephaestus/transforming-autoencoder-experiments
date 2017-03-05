@@ -1,16 +1,10 @@
 """
-MK3 - Further optimized the interpolation step with linear algebra, so as to:
-    1. Get rid of deepest two loops (3rd and 4th)
-    2. Replaced with 3-term hadamard product and result sum
-    3. Replaced with 3-term dot product,
-        where if A = max(0,...x) and B = max(0,...y) and U = src_img,
-        V_i,j = B(U^T)A or (A^T)U(B^T)
-        Since transpose(nxm) = O(n*m) assuming worst cases (replacing entire array with new one),
-            and transpose(nx1) = O(n), transpose(1xm) = O(m), the resulting complexities became
-        V_i,j = B(U^T)A     -> O(H*W)
-        V_i,j = (A^T)U(B^T) -> O(H) + O(W) = O(H + W)
-        So therefore our second is cheaper, and our new equation is
-            V_i,j = (A^T)U(B^T)
+MK4 - Realized that there is no feasible way to do this so that it can handle a BxHxWxC tensor all at once, with linear algebra.
+I also found that the implementation here https://github.com/qassemoquab/stnbhwd/blob/master/generic/BilinearSamplerBHWD.c 
+    used an iterative approach.
+It also would have a really high space complexity.
+Because of this, I have decided to go with an iterative approach, where we loop through each batch, height, width, and channel in the destination image.
+Fortunately, I do still have my optimized equation for this, which means for any given pixel in the output image we don't need to loop at all.
 
 -Blake Edwards / Dark Element
 """
@@ -38,19 +32,36 @@ src_img = cv2.imread("sample4.jpg")
 """Get Greyscale, since we are only testing with one channel atm"""
 #src_img = src_img[0:28,0:28,0]
 src_img = src_img[:, :, 0]
+#src_img = np.ones_like(src_img)
 #src_img = np.random.randn(192,108)
 #print src_img.shape
 #disp_img_fullscreen(src_img)
 
-"""Create affine transformation matrix"""
-T = np.array([[1,0,5],[0,1,20],[0,0,1]])
-#T = np.float32([[1.0,.4,10],[0,1.0,-50],[0,0,1]])
-#clear_r3 = np.array([[1,0,0],[0,1,0],[0,0,0]])
-#T = np.eye(3) + 0.05*(np.dot(clear_r3,np.random.randn(3,3)))
-
 """Initialize result image and get image dims"""
 dst_img = np.zeros_like(src_img)
 h, w = src_img.shape
+"""
+Scale src and dst images' pixel values to be 0-1 instead of 0-255,
+    since this has shown improved performance over 0-255.
+I believe this is because our bilinear interpolation equations apply a weight of 0-1 to 
+    each pixel in the src image when getting a pixel value in the dst image, so when we have 0-1
+    the formats are the same and it works better.
+Not certain of this though.
+"""
+src_img = src_img.astype(np.float32)
+dst_img = dst_img.astype(np.float32)
+src_img = src_img/255.
+dst_img = dst_img/255.
+
+"""Create affine transformation matrix"""
+#T = np.array([[0,0,0],[0,0,0],[0,0,0]])
+#T = np.array([[1,0,0],[0,1,0],[0,0,1]])
+#T = np.array([[1,0,5],[0,1,20],[0,0,1]])
+#T = np.float32([[1.0,.4,10],[0,1.0,-50],[0,0,1]])
+#T = np.float32([[1.5,0,0],[0,1.5,0],[0,0,1]])
+clear_r3 = np.array([[1,0,0],[0,1,0],[0,0,0]])
+T = np.eye(3) + 0.15*(np.dot(clear_r3,np.random.randn(3,3)))
+
 
 """Create src meshgrid"""
 x, y = np.meshgrid(np.arange(h), np.arange(w), indexing='ij')
@@ -97,8 +108,12 @@ dst_y, dst_x = np.reshape(dst_y, (1,w)), np.reshape(dst_x, (h,1))
 
 #Debugging
 #print dst_x.shape, dst_y.shape
+dst_x, dst_y = dst_x.astype(np.float32), dst_y.astype(np.float32)
+#dst_x /= h
+#dst_y /= w
 #print dst_x[0][0], dst_x[-1][0], dst_x[0][-1], dst_x[-1][-1]
 #print dst_y[0][0], dst_y[-1][0], dst_y[0][-1], dst_y[-1][-1]
+#sys.exit()
 
 #Debugging
 #print dst_meshgrid.shape
@@ -119,14 +134,35 @@ dst_x = np.reshape(dst_x, (h,1))
 dst_y = np.reshape(dst_y, (1,w))
 """
 
-for i in range(0,h,1.0):
+"""
+for i in range(h):
     for j in range(w):
+        c = i / float(h)
+        d = j / float(w)
+        print c, d
+"""
+"""
+"""
+src_img = src_img.astype(np.float32)
+dst_img = dst_img.astype(np.float32)
+src_img = src_img/255.
+dst_img = dst_img/255.
+for i in range(h):
+    for j in range(w):
+        #c = i / float(h)
+        #d = j / float(w)
         a = np.maximum(0, 1-np.abs(dst_x - i)).transpose()
         b = np.maximum(0, 1-np.abs(dst_y - j)).transpose()
         #dst_img[i,j] = np.sum(src_img * np.dot(np.maximum(0, 1-np.abs(dst_x - i)), np.maximum(0, 1-np.abs(dst_y - j))))
         #dst_img[i,j] = b.dot(src_img.transpose()).dot(a)
+        #print a.dot(src_img).dot(b)
+
         dst_img[i,j] = a.dot(src_img).dot(b)
+        #dst_img[i,j] = np.sum(src_img * np.dot(a,b))
         
+#print dst_img
+#print np.all(dst_img == src_img)
+#sys.exit()
 """
 Handle comparison display.
 Generate white divider, and concatenate everything for simultaneous comparison.

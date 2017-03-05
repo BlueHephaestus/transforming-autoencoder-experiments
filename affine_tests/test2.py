@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
-a = np.random.randn(28,28)
-#cv2.imshow('asdf',a)
-#cv2.waitKey(0)
-a *= 255.0
-cv2.imwrite('0.jpg', a)
+h = 20.
+w = 10.
+a,b = np.meshgrid(np.arange(h),np.arange(w))
+a /= h
+b /= w
+print a
+print b

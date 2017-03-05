@@ -1,17 +1,4 @@
 """
-MK3 - Further optimized the interpolation step with linear algebra, so as to:
-    1. Get rid of deepest two loops (3rd and 4th)
-    2. Replaced with 3-term hadamard product and result sum
-    3. Replaced with 3-term dot product,
-        where if A = max(0,...x) and B = max(0,...y) and U = src_img,
-        V_i,j = B(U^T)A or (A^T)U(B^T)
-        Since transpose(nxm) = O(n*m) assuming worst cases (replacing entire array with new one),
-            and transpose(nx1) = O(n), transpose(1xm) = O(m), the resulting complexities became
-        V_i,j = B(U^T)A     -> O(H*W)
-        V_i,j = (A^T)U(B^T) -> O(H) + O(W) = O(H + W)
-        So therefore our second is cheaper, and our new equation is
-            V_i,j = (A^T)U(B^T)
-
 -Blake Edwards / Dark Element
 """
 import numpy as np
@@ -91,10 +78,16 @@ dst_y, dst_x, dst_extra = np.split(dst_meshgrid, 3, 2)
 """
 We then get x and y as vectors, since we can more compactly use our formulas this way
 """
-dst_x = dst_x[:,0]
-dst_y = dst_y[0,:]
-dst_y, dst_x = np.reshape(dst_y, (1,w)), np.reshape(dst_x, (h,1))
+#dst_x = dst_x[:,0]
+#dst_y = dst_y[0,:]
+#dst_y, dst_x = np.reshape(dst_y, (1,w)), np.reshape(dst_x, (h,1))
 
+
+src_meshgrid = np.reshape(src_meshgrid, (h, w, 3))
+src_y, src_x, src_extra = np.split(src_meshgrid, 3, 2)
+#src_x = src_x[:,0]
+#src_y = src_y[0,:]
+#src_y, src_x = np.reshape(src_y, (1,w)), np.reshape(src_x, (h,1))
 #Debugging
 #print dst_x.shape, dst_y.shape
 #print dst_x[0][0], dst_x[-1][0], dst_x[0][-1], dst_x[-1][-1]
@@ -119,14 +112,20 @@ dst_x = np.reshape(dst_x, (h,1))
 dst_y = np.reshape(dst_y, (1,w))
 """
 
-for i in range(0,h,1.0):
-    for j in range(w):
-        a = np.maximum(0, 1-np.abs(dst_x - i)).transpose()
-        b = np.maximum(0, 1-np.abs(dst_y - j)).transpose()
-        #dst_img[i,j] = np.sum(src_img * np.dot(np.maximum(0, 1-np.abs(dst_x - i)), np.maximum(0, 1-np.abs(dst_y - j))))
-        #dst_img[i,j] = b.dot(src_img.transpose()).dot(a)
-        dst_img[i,j] = a.dot(src_img).dot(b)
-        
+#for i in range(h):
+    #for j in range(w):
+a = np.maximum(0, 1-np.abs(dst_x - src_x))
+b = np.maximum(0, 1-np.abs(dst_y - src_y))
+print n:.all(a==0)
+print b
+print np.dot(a,b)
+sys.exit()
+#dst_img[i,j] = np.sum(src_img * np.dot(np.maximum(0, 1-np.abs(dst_x - i)), np.maximum(0, 1-np.abs(dst_y - j))))
+#dst_img[i,j] = b.dot(src_img.transpose()).dot(a)
+#dst_img = a.dot(src_img).dot(b)
+dst_img = src_img * np.dot(a,b)
+print dst_img
+sys.exit()
 """
 Handle comparison display.
 Generate white divider, and concatenate everything for simultaneous comparison.

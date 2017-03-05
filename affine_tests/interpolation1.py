@@ -1,3 +1,11 @@
+"""
+First working implementation of affine transformations.
+    This only works with greyscale images, one at a time.
+    It also only works for lossless affines.
+    It also does not use any linear algebra for the interpolation, only for the application of the transformation.
+    It does not have a differentiable interpolation currently.
+It is the first step, and the first version.
+"""
 import numpy as np
 import cv2
 
